@@ -12,7 +12,7 @@ A custom Minecraft launcher built with Python and a web-based UI, featuring user
 - **Skin Manager** — Upload a custom skin PNG and preview your player face in the launcher
 - **Version Manager** — Browse, select, and delete installed Minecraft versions and modpacks
 - **Game Launcher** — Launch any installed version in offline mode with configurable JVM memory
-- **Patch Notes** — In-app changelog panel with categorized tags (fix, feature, perf, security)
+- **Patch Notes** — In-app changelog panel with categorized tags (dosent work idk why)
 - **Custom UI** — Dark pixel-art themed interface built with Tailwind CSS, Eel, and custom fonts
 
 ---
