@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solarwakes Launcher</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="text/javascript" src="/eel.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&family=Rajdhani:wght@400;500;600;700&family=Orbitron:wght@500;600;700;800&family=JetBrains+Mono:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* ── Layout fixes ── */
+        #app-screen {
+            display: flex !important;
+            flex-direction: column;
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+        }
+        #app-screen > .main-body {
+            flex: 1 1 0%;
+            min-height: 0;
+            overflow: hidden;
+            display: flex;
+            padding: 16px;
+            gap: 12px;
+        }
+        #app-screen > .footer-bar {
+            flex-shrink: 0;
+            z-index: 10;
+        }
+
+        /* ── Compact version sidebar (fix #4) ── */
+        #version-sidebar {
+            width: 168px;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Side tab strip */
+        .side-tab {
+            flex: 1;
+            text-align: center;
+            padding: 5px 0;
+            border-radius: 8px;
+            font-family: Orbitron, sans-serif;
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            color: var(--text-ghost, #4b5563);
+            cursor: pointer;
+            transition: all 0.15s;
+            border: none;
+            background: transparent;
+        }
+        .side-tab.active { background: rgba(74,222,128,0.14); color: #4ade80; }
+
+        .cat-label {
+            font-family: Orbitron, sans-serif;
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            color: rgba(74,222,128,0.45);
+            padding: 8px 8px 3px;
+        }
+
+        /* ── Patch notes styles (fix #1) ── */
+        .patch-entry {
+            padding: 10px 14px;
+            border-radius: 12px;
+            background: rgba(74,222,128,0.03);
+            border: 1px solid rgba(74,222,128,0.07);
+            margin-bottom: 10px;
+        }
+        .patch-ver  { font-family: Orbitron, sans-serif; font-size: 12px; font-weight: 700; color: #4ade80; letter-spacing: 1px; }
+        .patch-date { font-family: JetBrains Mono, monospace; font-size: 10px; color: var(--text-ghost, #4b5563); margin-left: 8px; }
+        .patch-note { font-family: Rajdhani, sans-serif; font-size: 13px; font-weight: 500; color: #94a3b8; margin-top: 5px; line-height: 1.5; list-style: none; padding: 0; margin: 0; }
+        .patch-tag  { display: inline-block; font-size: 10px; font-family: Orbitron, sans-serif; font-weight: 700; letter-spacing: 1px; padding: 2px 7px; border-radius: 6px; margin-right: 4px; margin-bottom: 6px; }
+        .tag-fix    { background: rgba(251,191,36,0.1);  color: #fbbf24; }
+        .tag-feat   { background: rgba(74,222,128,0.1);  color: #4ade80; }
+        .tag-perf   { background: rgba(96,165,250,0.1);  color: #60a5fa; }
+        .tag-sec    { background: rgba(239,68,68,0.1);   color: #f87171; }
+
+        /* ── Quick friends sidebar (fix #2) ── */
+        #friends-sidebar {
+            width: 162px;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .friend-row {
+            display: flex; align-items: center; gap: 7px;
+            padding: 5px 7px; border-radius: 9px;
+            transition: background 0.15s; cursor: default;
+        }
+        .friend-row:hover { background: rgba(74,222,128,0.05); }
+        .friend-av {
+            width: 28px; height: 28px; border-radius: 7px; flex-shrink: 0;
+            background: rgba(74,222,128,0.08);
+            border: 1px solid rgba(74,222,128,0.18);
+            display: flex; align-items: center; justify-content: center; font-size: 13px;
+        }
+        .friend-name-sm  { font-family: Rajdhani, sans-serif; font-size: 12px; font-weight: 600; color: #e2e8f0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .friend-status-sm { font-family: JetBrains Mono, monospace; font-size: 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .dot-online  { color: #4ade80; }
+        .dot-away    { color: #fbbf24; }
+        .dot-offline { color: #374151; }
+
+        /* ── Manage Versions modal (fix #5) ── */
+        .mv-row { display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:12px; background:rgba(74,222,128,0.03); border:1px solid rgba(74,222,128,0.07); margin-bottom:8px; }
+        .mv-icon { width:34px; height:34px; border-radius:9px; flex-shrink:0; background:rgba(74,222,128,0.07); border:1px solid rgba(74,222,128,0.15); display:flex; align-items:center; justify-content:center; font-size:16px; }
+        .mv-name { font-family:Rajdhani,sans-serif; font-size:14px; font-weight:700; color:#e2e8f0; }
+        .mv-meta { font-family:JetBrains Mono,monospace; font-size:10px; color:var(--text-ghost,#4b5563); }
+        .mv-del  { margin-left:auto; padding:4px 10px; border-radius:7px; background:rgba(239,68,68,0.07); border:1px solid rgba(239,68,68,0.18); color:#f87171; font-family:Orbitron,sans-serif; font-size:9px; font-weight:700; letter-spacing:1px; cursor:pointer; transition:all 0.15s; flex-shrink:0; }
+        .mv-del:hover { background:rgba(239,68,68,0.18); }
+
+        /* ── BG color fix (#3) — applied via JS ── */
+        body.sw-custom-bg { background: var(--sw-bg, #050e07) !important; animation: none !important; }
+    </style>
+</head>
+<body class="h-screen w-screen gradient-bg overflow-hidden">
+
+    <!-- ░░ PIXEL BACKGROUND ░░ -->
+    <div class="pixel-bg">
+        <div class="pixel-block pb-1"></div><div class="pixel-block pb-2"></div>
+        <div class="pixel-block pb-3"></div><div class="pixel-block pb-4"></div>
+        <div class="pixel-block pb-5"></div><div class="pixel-block pb-6"></div>
+        <div class="pixel-block pb-7"></div><div class="pixel-block pb-8"></div>
+    </div>
+
+    <!-- ░░ AUTH SCREEN ░░ -->
+    <div id="auth-screen" class="absolute inset-0 flex items-center justify-center z-40">
+        <div class="glass rounded-3xl p-9 relative z-10"
+             style="width:min(400px,92vw);box-shadow:0 40px 100px rgba(0,0,0,0.82),0 0 60px rgba(74,222,128,0.04);">
+            <div class="text-center mb-8">
+                <div class="auth-logo">SOLARWAKES</div>
+                <span class="section-label" style="letter-spacing:5px;margin-top:5px;color:var(--text-dim);">Minecraft Launcher</span>
+            </div>
+            <div id="auth-error" class="hidden text-center mb-5 py-2.5 px-4 rounded-xl border"
+                 style="font-family:Rajdhani,sans-serif;font-size:13px;font-weight:600;letter-spacing:1px;"></div>
+            <div id="login-form" class="space-y-3">
+                <input id="username" type="text"     placeholder="Username" class="auth-input">
+                <input id="password" type="password" placeholder="Password" class="auth-input"
+                       onkeydown="if(event.key==='Enter')login()">
+                <button onclick="login()" class="auth-btn-primary" style="margin-top:8px;">SIGN IN</button>
+                <div class="auth-divider"></div>
+                <button onclick="showRegister()" class="glass-btn w-full py-3 rounded-xl section-label"
+                        style="letter-spacing:2px;color:var(--text-secondary);font-size:12px;text-align:center;">
+                    CREATE ACCOUNT
+                </button>
+            </div>
+            <div id="register-form" class="space-y-3 hidden">
+                <input id="reg-username" type="text"     placeholder="Username"      class="auth-input">
+                <input id="reg-email"    type="text"     placeholder="Email address" class="auth-input">
+                <input id="reg-password" type="password" placeholder="Password"      class="auth-input"
+                       onkeydown="if(event.key==='Enter')register()">
+                <button onclick="register()" class="auth-btn-primary" style="margin-top:8px;">CREATE ACCOUNT</button>
+                <div class="auth-divider"></div>
+                <button onclick="showLogin()" class="glass-btn w-full py-3 rounded-xl section-label"
+                        style="letter-spacing:2px;color:var(--text-secondary);font-size:12px;text-align:center;">
+                    ← BACK TO SIGN IN
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ░░ MAIN APP SCREEN ░░ -->
+    <div id="app-screen" class="hidden h-full w-full relative z-10" style="opacity:0;">
+
+        <!-- Top body -->
+        <div class="main-body">
+
+            <!-- ─ LEFT SIDEBAR: versions + modpacks (fixes #4, #5, #6) ─ -->
+            <div id="version-sidebar" class="glass rounded-2xl slide-in delay-1">
+
+                <!-- Manage button (fix #5) -->
+                <button onclick="openManageVersions()"
+                        class="mx-2 mt-2 py-1.5 rounded-xl section-label flex items-center justify-center gap-1 shrink-0"
+                        style="letter-spacing:1.5px;font-size:9px;color:#4ade80;
+                               background:rgba(74,222,128,0.06);border:1px solid rgba(74,222,128,0.14);
+                               cursor:pointer;transition:all 0.2s;"
+                        onmouseover="this.style.background='rgba(74,222,128,0.13)'"
+                        onmouseout="this.style.background='rgba(74,222,128,0.06)'">
+                    ⚙ MANAGE
+                </button>
+
+                <!-- Tab strip: Versions / Modpacks (fix #6) -->
+                <div class="flex gap-1 mx-2 mt-1.5 p-1 rounded-xl shrink-0" style="background:rgba(0,0,0,0.35);">
+                    <button onclick="switchSideTab('versions')" id="stab-versions" class="side-tab active">Versions</button>
+                    <button onclick="switchSideTab('modpacks')" id="stab-modpacks" class="side-tab">Modpacks</button>
+                </div>
+
+                <!-- Versions pane — script.js populates #version-list with .version-slot elements -->
+                <div id="stab-versions-pane" class="flex-1 overflow-y-auto py-1 px-1 min-h-0">
+                    <div id="version-list" class="space-y-0.5">
+                        <div class="text-center py-6 section-label" style="letter-spacing:1px;color:var(--text-ghost);">
+                            No versions found
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modpacks pane — script.js populates #modpack-list (fix #6) -->
+                <div id="stab-modpacks-pane" class="hidden flex-1 overflow-y-auto py-1 px-1 min-h-0">
+                    <div id="modpack-list" class="space-y-0.5">
+                        <div class="text-center py-6 section-label" style="letter-spacing:1px;color:var(--text-ghost);">
+                            No modpacks found
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Version count badge at bottom -->
+                <div class="flex items-center justify-between px-3 py-2 shrink-0"
+                     style="border-top:1px solid rgba(74,222,128,0.07);">
+                    <span class="section-label" style="font-size:9px;letter-spacing:1.5px;margin:0;">INSTALLED</span>
+                    <span id="version-count" class="font-bold px-2 py-0.5 rounded-lg"
+                          style="background:rgba(74,222,128,0.1);color:#4ade80;font-family:Orbitron,sans-serif;font-size:10px;">0</span>
+                </div>
+            </div>
+
+            <!-- ─ CENTRE CONTENT ─ -->
+            <div class="flex-1 flex flex-col gap-4 min-h-0 overflow-hidden">
+
+                <!-- Version Details + Patch Notes panel (fix #1) -->
+                <div class="glass rounded-2xl flex-1 relative overflow-hidden slide-in delay-2" style="min-height:0;">
+                    <!-- Empty state -->
+                    <div id="details-empty" class="absolute inset-0 flex flex-col items-center justify-center gap-3">
+                        <div style="font-size:52px;opacity:0.15;filter:grayscale(1);">⬛</div>
+                        <p class="section-label" style="letter-spacing:3px;color:var(--text-ghost);">Select a version</p>
+                    </div>
+
+                    <!-- Populated state — IDs match exactly what script.js writes to -->
+                    <div id="details-content" class="hidden absolute inset-0 flex flex-col" style="overflow:hidden;">
+
+                        <!-- Header strip -->
+                        <div class="flex items-center gap-4 px-5 py-3.5 shrink-0"
+                             style="border-bottom:1px solid rgba(74,222,128,0.07);">
+                            <div class="rounded-xl flex items-center justify-center text-2xl shrink-0"
+                                 style="width:46px;height:46px;background:rgba(74,222,128,0.06);border:1px solid rgba(74,222,128,0.18);">
+                                <span id="det-icon">📦</span>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <h2 id="det-name" class="font-black tracking-wide text-white truncate"
+                                    style="font-family:Orbitron,sans-serif;font-size:17px;line-height:1.15;"></h2>
+                                <div class="mt-1 flex items-center gap-3">
+                                    <span id="det-type" class="version-type-badge badge-release">Release</span>
+                                    <!-- det-date is written by script.js -->
+                                    <span id="det-date" class="section-label"
+                                          style="letter-spacing:1px;font-size:10px;margin:0;color:var(--text-dim);"></span>
+                                </div>
+                            </div>
+                            <!-- Detail tabs -->
+                            <div class="flex gap-1 p-1 rounded-xl shrink-0" style="background:rgba(0,0,0,0.35);">
+                                <button onclick="switchDetailTab('patch')" id="dtab-patch"
+                                        class="side-tab active" style="padding:4px 10px;font-size:8.5px;">PATCH NOTES</button>
+                                <button onclick="switchDetailTab('info')"  id="dtab-info"
+                                        class="side-tab"        style="padding:4px 10px;font-size:8.5px;">INFO</button>
+                            </div>
+                        </div>
+
+                        <!-- PATCH NOTES pane (fix #1) -->
+                        <div id="dtab-patch-pane" class="flex-1 overflow-y-auto p-4 min-h-0">
+                            <div id="patch-notes-list"></div>
+                        </div>
+
+                        <!-- INFO pane — keeps the original stat cards + det-base that script.js writes to -->
+                        <div id="dtab-info-pane" class="hidden flex-1 overflow-y-auto p-5 min-h-0">
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="stat-card">
+                                    <span class="stat-label">Release Date</span>
+                                    <!-- duplicate of det-date for the info card -->
+                                    <div id="det-date-info" class="stat-value">—</div>
+                                </div>
+                                <div class="stat-card">
+                                    <span class="stat-label">Base Engine</span>
+                                    <div id="det-base" class="stat-value" style="color:var(--em-bright);">—</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Console Log -->
+                <div id="console-area" class="hidden flex-col glass-dark rounded-2xl shrink-0" style="height:155px;">
+                    <div class="flex items-center justify-between px-4 py-2 shrink-0"
+                         style="border-bottom:1px solid rgba(74,222,128,0.06);">
+                        <span class="section-label" style="letter-spacing:2.5px;">Game Log</span>
+                        <button onclick="toggleConsole()" class="glass-btn px-3 py-1 rounded-lg section-label"
+                                style="letter-spacing:1.5px;font-size:10px;">CLOSE ✕</button>
+                    </div>
+                    <div id="console-logs" class="flex-1 overflow-y-auto p-3 space-y-0"></div>
+                </div>
+            </div>
+
+            <!-- ─ RIGHT SIDEBAR: quick friends (fix #2) ─ -->
+            <div id="friends-sidebar" class="glass rounded-2xl slide-in delay-3">
+                <div class="flex items-center justify-between px-3 py-2.5 shrink-0"
+                     style="border-bottom:1px solid rgba(74,222,128,0.08);">
+                    <span class="section-label" style="letter-spacing:2px;font-size:9px;margin:0;">FRIENDS</span>
+                    <span id="friends-online-count"
+                          style="background:rgba(74,222,128,0.1);color:#4ade80;font-family:Orbitron,sans-serif;font-size:9px;font-weight:700;padding:1px 6px;border-radius:5px;">—</span>
+                </div>
+
+                <!-- Populated by refreshQuickFriends() below -->
+                <div id="quick-friends-list" class="flex-1 overflow-y-auto p-1.5 min-h-0 space-y-0.5">
+                    <div class="text-center py-6 section-label" style="letter-spacing:1px;color:var(--text-ghost);font-size:10px;">
+                        Sign in to see friends
+                    </div>
+                </div>
+
+                <button onclick="openFriends()"
+                        class="m-2 py-1.5 rounded-xl section-label text-center shrink-0"
+                        style="letter-spacing:1.5px;font-size:9px;color:#4ade80;
+                               background:rgba(74,222,128,0.06);border:1px solid rgba(74,222,128,0.12);
+                               cursor:pointer;transition:all 0.15s;"
+                        onmouseover="this.style.background='rgba(74,222,128,0.12)'"
+                        onmouseout="this.style.background='rgba(74,222,128,0.06)'">
+                    ALL FRIENDS
+                </button>
+            </div>
+
+        </div><!-- end main-body -->
+
+        <!-- ─ Footer / Launch Bar ─ -->
+        <div class="footer-bar glass flex items-center justify-between px-5 py-3.5 slide-in delay-4"
+             style="border-top:1px solid rgba(74,222,128,0.08);border-left:0;border-right:0;border-bottom:0;border-radius:0;">
+            <button onclick="openProfile()" class="glass-btn flex items-center gap-3 px-3 py-2 rounded-2xl">
+                <img id="player-avatar" src="" class="block rounded-xl"
+                     style="width:44px;height:44px;background:var(--bg-surface);outline:2px solid rgba(74,222,128,0.25);outline-offset:2px;">
+                <div class="text-left">
+                    <span class="section-label" style="margin-bottom:2px;letter-spacing:2px;">Playing as</span>
+                    <p id="player-name" class="font-bold text-white"
+                       style="font-family:Rajdhani,sans-serif;font-size:16px;font-weight:700;line-height:1;"></p>
+                </div>
+            </button>
+            <button id="play-btn" onclick="playGame()" class="play-button"
+                    style="font-size:22px;padding:14px 72px;min-width:250px;">PLAY</button>
+            <div class="flex items-center gap-2">
+                <button onclick="openSettings()" class="glass-btn w-10 h-10 rounded-xl flex items-center justify-center"
+                        style="font-size:17px;" title="Appearance">⚙️</button>
+                <div class="glass-btn flex items-center gap-2 px-3 py-2.5 rounded-xl cursor-default section-label"
+                     style="letter-spacing:2px;font-size:11px;color:var(--text-secondary);">
+                    <span id="status-dot" class="status-online" style="font-size:8px;line-height:1;">●</span>
+                    <span id="status-text">ONLINE</span>
+                </div>
+            </div>
+        </div>
+    </div><!-- end app-screen -->
+
+
+    <!-- ░░ PROFILE MODAL ░░ -->
+    <div id="profile-modal" class="hidden modal-overlay">
+        <div class="modal-panel w-full" style="max-width:540px;padding:28px;">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="modal-title">Profile</h2>
+                <button onclick="closeProfile()" class="modal-close">✕</button>
+            </div>
+            <div class="flex gap-6">
+                <div class="flex flex-col gap-3 shrink-0" style="width:118px;">
+                    <div class="rounded-2xl flex flex-col items-center justify-center gap-2"
+                         style="height:208px;background:rgba(0,5,2,0.92);border:1px solid rgba(74,222,128,0.12);">
+                        <span style="font-size:26px;opacity:0.2;filter:grayscale(1);">🧍</span>
+                        <span class="section-label" style="letter-spacing:1.5px;color:var(--text-ghost);text-align:center;font-size:10px;">SKIN<br>VIEWER<br>SOON™</span>
+                    </div>
+                    <button onclick="uploadSkin()" class="glass-btn py-2 rounded-xl section-label"
+                            style="letter-spacing:1px;color:var(--text-secondary);font-size:10px;text-align:center;">🎨 CHANGE SKIN</button>
+                </div>
+                <div class="flex-1 flex flex-col gap-4">
+                    <div>
+                        <span class="section-label" style="margin-bottom:4px;">Username</span>
+                        <p id="prof-name" class="font-black text-white truncate"
+                           style="font-family:Orbitron,sans-serif;font-size:20px;"></p>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="stat-card"><span class="stat-label">Member Since</span><div id="prof-joined" class="stat-value" style="font-size:13px;">—</div></div>
+                        <div class="stat-card"><span class="stat-label">Friends</span><div id="prof-friends" class="stat-value">—</div></div>
+                    </div>
+                    <div>
+                        <span class="section-label" style="margin-bottom:8px;">Saved Accounts</span>
+                        <div id="saved-accounts-list" class="space-y-2 overflow-y-auto pr-1" style="max-height:128px;"></div>
+                        <button onclick="addNewAccount()" class="mt-3 w-full glass-btn py-2.5 rounded-xl flex items-center justify-center gap-2 section-label"
+                                style="letter-spacing:2px;color:#4ade80;font-size:11px;">＋ ADD ACCOUNT</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ░░ SETTINGS MODAL ░░ -->
+    <div id="settings-modal" class="hidden modal-overlay">
+        <div class="modal-panel w-full" style="max-width:405px;padding:28px;">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="modal-title">Appearance</h2>
+                <button onclick="closeSettings()" class="modal-close">✕</button>
+            </div>
+            <div class="space-y-5">
+
+                <!-- Gradient toggle -->
+                <div class="flex items-center justify-between p-3 rounded-xl"
+                     style="background:rgba(74,222,128,0.04);border:1px solid rgba(74,222,128,0.07);">
+                    <span class="settings-label" style="margin-bottom:0;">Background Gradient</span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="set-gradient-toggle" onchange="updateUI()" class="sr-only peer" checked>
+                        <div class="relative w-11 h-6 rounded-full peer peer-checked:bg-emerald-700
+                                    peer-checked:after:translate-x-full peer-checked:after:border-white
+                                    after:content-[''] after:absolute after:top-[3px] after:left-[3px]
+                                    after:bg-white after:rounded-full after:h-[18px] after:w-[18px]
+                                    after:transition-all" style="background:rgba(255,255,255,0.08);"></div>
+                    </label>
+                </div>
+
+                <!-- FIX #3: dedicated background solid-color picker -->
+                <div class="flex items-center justify-between p-3 rounded-xl"
+                     style="background:rgba(74,222,128,0.04);border:1px solid rgba(74,222,128,0.07);">
+                    <div>
+                        <span class="settings-label" style="margin-bottom:0;">Background Color</span>
+                        <p style="font-family:JetBrains Mono,monospace;font-size:10px;color:var(--text-ghost);">applies when gradient is OFF</p>
+                    </div>
+                    <input type="color" id="set-bg-color" value="#050e07"
+                           class="w-10 h-10 rounded-lg border cursor-pointer"
+                           style="border-color:rgba(74,222,128,0.15);padding:2px;background:transparent;"
+                           oninput="applyBgColor()" onchange="applyBgColor()">
+                </div>
+
+                <!-- Gradient color pickers -->
+                <div>
+                    <label class="settings-label" id="color-pickers-label">Gradient Colors</label>
+                    <div class="flex gap-2">
+                        <input type="color" id="set-c1" class="w-10 h-10 rounded-lg border cursor-pointer"
+                               style="border-color:rgba(74,222,128,0.15);padding:2px;background:transparent;" onchange="updateUI()">
+                        <input type="color" id="set-c2" class="w-10 h-10 rounded-lg border cursor-pointer extra-picker"
+                               style="border-color:rgba(74,222,128,0.15);padding:2px;background:transparent;" onchange="updateUI()">
+                        <input type="color" id="set-c3" class="w-10 h-10 rounded-lg border cursor-pointer extra-picker"
+                               style="border-color:rgba(74,222,128,0.15);padding:2px;background:transparent;" onchange="updateUI()">
+                        <input type="color" id="set-c4" class="w-10 h-10 rounded-lg border cursor-pointer extra-picker"
+                               style="border-color:rgba(74,222,128,0.15);padding:2px;background:transparent;" onchange="updateUI()">
+                    </div>
+                </div>
+
+                <div style="height:1px;background:rgba(74,222,128,0.07);"></div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="settings-label">Card Color</label>
+                        <input type="color" id="set-card-color" class="w-full h-10 rounded-xl border cursor-pointer"
+                               style="border-color:rgba(74,222,128,0.15);padding:2px;background:transparent;" onchange="updateUI()">
+                    </div>
+                    <div>
+                        <label class="settings-label">Play Button</label>
+                        <input type="color" id="set-play-color" value="#22c55e" class="w-full h-10 rounded-xl border cursor-pointer"
+                               style="border-color:rgba(74,222,128,0.15);padding:2px;background:transparent;" onchange="updateUI()">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="settings-label">Gradient Speed — <span id="speed-val">15</span>s</label>
+                    <input type="range" id="set-speed" min="3" max="30" value="15" oninput="updateUI()">
+                </div>
+                <div>
+                    <label class="settings-label">Blur Intensity — <span id="blur-val">16</span>px</label>
+                    <input type="range" id="set-blur" min="0" max="40" value="16" oninput="updateUI()">
+                </div>
+                <div>
+                    <label class="settings-label">Card Opacity — <span id="opac-val">30</span>%</label>
+                    <input type="range" id="set-opac" min="5" max="95" value="30" oninput="updateUI()">
+                </div>
+
+                <button onclick="resetSettings()" class="w-full py-2.5 rounded-xl settings-label"
+                        style="margin-bottom:0;letter-spacing:2px;font-size:11px;color:#f87171;
+                               background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.14);
+                               cursor:pointer;transition:all 0.2s;"
+                        onmouseover="this.style.background='rgba(239,68,68,0.14)'"
+                        onmouseout="this.style.background='rgba(239,68,68,0.06)'">
+                    RESET DEFAULTS
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ░░ FRIENDS MODAL ░░ -->
+    <div id="friends-modal" class="hidden modal-overlay">
+        <div class="modal-panel w-full flex flex-col" style="max-width:460px;height:530px;padding:24px;">
+            <div class="flex items-center justify-between mb-4 shrink-0">
+                <h2 class="modal-title">Friends</h2>
+                <button onclick="closeFriends()" class="modal-close">✕</button>
+            </div>
+            <div class="flex gap-1 p-1 rounded-xl mb-4 shrink-0" style="background:rgba(0,0,0,0.42);">
+                <button onclick="switchFriendTab('list')" id="tab-list" class="friend-tab active">Friends</button>
+                <button onclick="switchFriendTab('reqs')" id="tab-reqs" class="friend-tab">Requests</button>
+                <button onclick="switchFriendTab('add')"  id="tab-add"  class="friend-tab">Add</button>
+            </div>
+            <div id="f-list-view" class="flex-1 overflow-y-auto space-y-2 pr-1 min-h-0"></div>
+            <div id="f-add-view" class="hidden flex-col flex-1 min-h-0 gap-3">
+                <div class="flex gap-2 shrink-0">
+                    <input type="text" id="f-search-input" placeholder="Search username..."
+                           class="auth-input flex-1" style="padding:11px 14px;"
+                           onkeydown="if(event.key==='Enter')searchFriend()">
+                    <button onclick="searchFriend()" class="glass-btn px-4 rounded-xl section-label"
+                            style="letter-spacing:1px;color:#4ade80;font-size:11px;white-space:nowrap;">SEARCH</button>
+                </div>
+                <div id="f-search-res" class="flex-1 overflow-y-auto min-h-0"></div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ░░ MANAGE VERSIONS MODAL (fix #5) ░░ -->
+    <div id="manage-versions-modal" class="hidden modal-overlay">
+        <div class="modal-panel w-full flex flex-col" style="max-width:500px;height:540px;padding:24px;">
+            <div class="flex items-center justify-between mb-4 shrink-0">
+                <h2 class="modal-title">Manage Versions</h2>
+                <button onclick="closeManageVersions()" class="modal-close">✕</button>
+            </div>
+            <!-- Tabs -->
+            <div class="flex gap-1 p-1 rounded-xl mb-3 shrink-0" style="background:rgba(0,0,0,0.42);">
+                <button onclick="switchMVTab('versions')" id="mvtab-versions" class="friend-tab active">Versions</button>
+                <button onclick="switchMVTab('modpacks')" id="mvtab-modpacks" class="friend-tab">Modpacks</button>
+            </div>
+            <!-- Versions list — populated by renderManageVersions() -->
+            <div id="mvtab-versions-pane" class="flex-1 overflow-y-auto min-h-0" style="padding-right:2px;">
+                <div id="mv-versions-list"></div>
+            </div>
+            <!-- Modpacks list — populated by renderManageModpacks() -->
+            <div id="mvtab-modpacks-pane" class="hidden flex-1 overflow-y-auto min-h-0" style="padding-right:2px;">
+                <div id="mv-modpacks-list"></div>
+            </div>
+            <!-- Install button -->
+            <div class="shrink-0 pt-3 mt-1" style="border-top:1px solid rgba(74,222,128,0.08);">
+                <button onclick="addNewVersion()"
+                        class="w-full py-2.5 rounded-xl section-label flex items-center justify-center gap-2"
+                        style="letter-spacing:2px;font-size:11px;color:#4ade80;
+                               background:rgba(74,222,128,0.06);border:1px solid rgba(74,222,128,0.16);
+                               cursor:pointer;transition:all 0.2s;"
+                        onmouseover="this.style.background='rgba(74,222,128,0.13)'"
+                        onmouseout="this.style.background='rgba(74,222,128,0.06)'">
+                    ＋ INSTALL NEW VERSION
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ░░ ADDON SCRIPT — wires new UI to existing script.js logic ░░ -->
+    <script>
+    /* ─────────────────────────────────────────────────────────────────
+       PATCH NOTES DATA (fix #1)
+       Keyed by the exact version string that script.js passes to selectVersion().
+       Extend this object when your backend gains a real patch-notes API.
+    ───────────────────────────────────────────────────────────────── */
+    const PATCH_DB = {
+        // Example entries — replace / extend to match your real version IDs
+        '1.21.4': [
+            { ver:'1.21.4', date:'Dec 3 2024', tags:['feat','fix'],
+              notes:['Added new winter biome powder snow improvements','Fixed duplication glitch with hoppers and chests','New music discs added to ancient cities','Chunk loading performance improvements'] },
+            { ver:'1.21.3', date:'Oct 14 2024', tags:['perf','fix'],
+              notes:['Optimised entity rendering pipeline','Reduced memory usage by ~18% on large worlds','Fixed Breeze mob pathfinding in tight spaces'] },
+        ],
+        '1.20.6': [
+            { ver:'1.20.6', date:'Apr 29 2024', tags:['sec','fix'],
+              notes:['Security patch for server-side exploit','Fixed wolf armor durability not saving correctly','Armadillo scute drop rate balanced'] },
+        ],
+        '25w20a': [
+            { ver:'25w20a', date:'May 14 2025', tags:['feat','perf'],
+              notes:['Experimental new cave generation algorithm','Added placeholder structures for upcoming update','Numerous debug fixes for experimental features'] },
+        ],
+    };
+    const TAG_CLS = { fix:'tag-fix', feat:'tag-feat', perf:'tag-perf', sec:'tag-sec' };
+    const TAG_LBL = { fix:'BUG FIX', feat:'FEATURE', perf:'PERFORMANCE', sec:'SECURITY' };
+
+    function renderPatchNotes(version) {
+        const list    = document.getElementById('patch-notes-list');
+        const entries = PATCH_DB[version];
+        if (!entries?.length) {
+            list.innerHTML = `<p style="color:var(--text-ghost);font-family:Rajdhani,sans-serif;font-size:13px;padding:6px;">
+                No patch notes on record for <strong style="color:#4ade80;">${version}</strong>.</p>`;
+            return;
+        }
+        list.innerHTML = entries.map(e => `
+            <div class="patch-entry">
+                <div style="display:flex;align-items:baseline;gap:4px;flex-wrap:wrap;margin-bottom:6px;">
+                    <span class="patch-ver">${e.ver}</span>
+                    <span class="patch-date">${e.date}</span>
+                </div>
+                <div style="margin-bottom:7px;">${e.tags.map(t=>`<span class="patch-tag ${TAG_CLS[t]}">${TAG_LBL[t]}</span>`).join('')}</div>
+                <ul class="patch-note">
+                    ${e.notes.map(n=>`<li style="padding-left:14px;position:relative;margin-bottom:3px;">
+                        <span style="position:absolute;left:0;color:#4ade80;opacity:0.7;">›</span>${n}</li>`).join('')}
+                </ul>
+            </div>`).join('');
+    }
+
+    /* ─────────────────────────────────────────────────────────────────
+       HOOK into script.js's selectVersion() so the patch notes panel
+       is rendered every time a version is selected.
+       We wait for DOMContentLoaded so script.js has already defined it.
+    ───────────────────────────────────────────────────────────────── */
+    document.addEventListener('DOMContentLoaded', () => {
+        const _origSelect = window.selectVersion;
+        window.selectVersion = function(ver, element) {
+            _origSelect(ver, element);          // run original logic (eel call, badge update, etc.)
+            renderPatchNotes(ver);              // then render patch notes
+            // mirror det-date into the info card duplicate
+            setTimeout(() => {
+                const d = document.getElementById('det-date')?.innerText;
+                const di = document.getElementById('det-date-info');
+                if (di && d) di.innerText = d;
+            }, 300);                            // slight delay to let eel respond
+        };
+
+        /* FIX #3: background color — runs alongside the existing updateUI() */
+        const _origUpdateUI = window.updateUI;
+        window.updateUI = function() {
+            if (_origUpdateUI) _origUpdateUI.apply(this, arguments);
+            applyBgColor();
+        };
+    });
+
+    /* ─────────────────────────────────────────────────────────────────
+       FIX #3: apply background color directly to body
+    ───────────────────────────────────────────────────────────────── */
+    function applyBgColor() {
+        const gradOn = document.getElementById('set-gradient-toggle')?.checked;
+        const col    = document.getElementById('set-bg-color')?.value;
+        if (!col) return;
+        if (!gradOn) {
+            document.documentElement.style.setProperty('--sw-bg', col);
+            document.body.classList.add('sw-custom-bg');
+            document.body.style.setProperty('background', col, 'important');
+        } else {
+            document.body.classList.remove('sw-custom-bg');
+            document.body.style.removeProperty('background');
+        }
+    }
+
+    /* ─────────────────────────────────────────────────────────────────
+       SIDEBAR TABS — Versions / Modpacks (fix #6)
+    ───────────────────────────────────────────────────────────────── */
+    function switchSideTab(tab) {
+        ['versions','modpacks'].forEach(t => {
+            document.getElementById('stab-'+t)?.classList.toggle('active', t===tab);
+            document.getElementById('stab-'+t+'-pane')?.classList.toggle('hidden', t!==tab);
+        });
+    }
+
+    /* ─────────────────────────────────────────────────────────────────
+       DETAIL TABS — Patch Notes / Info (fix #1)
+    ───────────────────────────────────────────────────────────────── */
+    function switchDetailTab(tab) {
+        ['patch','info'].forEach(t => {
+            document.getElementById('dtab-'+t)?.classList.toggle('active', t===tab);
+            document.getElementById('dtab-'+t+'-pane')?.classList.toggle('hidden', t!==tab);
+        });
+    }
+
+    /* ─────────────────────────────────────────────────────────────────
+       QUICK FRIENDS SIDEBAR (fix #2)
+       Called after script.js sets friendsData via reloadFriends().
+       We expose a hook that script.js can call, or call it ourselves
+       by wrapping reloadFriends().
+    ───────────────────────────────────────────────────────────────── */
+    document.addEventListener('DOMContentLoaded', () => {
+        const _origReload = window.reloadFriends;
+        window.reloadFriends = async function() {
+            if (_origReload) await _origReload.apply(this, arguments);
+            // After friendsData is refreshed, update the quick sidebar
+            refreshQuickFriends();
+        };
+    });
+
+    function refreshQuickFriends() {
+        const box = document.getElementById('quick-friends-list');
+        if (!box) return;
+        // friendsData is the global from script.js
+        const fd = window.friendsData || {};
+        const entries = Object.values(fd).filter(f => f.status === 'accepted');
+
+        if (!entries.length) {
+            box.innerHTML = `<div class="text-center py-6 section-label" style="letter-spacing:1px;color:var(--text-ghost);font-size:10px;">No friends yet</div>`;
+            document.getElementById('friends-online-count').innerText = '0';
+            return;
+        }
+
+        const online  = entries.filter(f => f.status_now === 'online' || f.status_now === 'in-game');
+        const away    = entries.filter(f => f.status_now === 'away');
+        const offline = entries.filter(f => !['online','in-game','away'].includes(f.status_now));
+
+        document.getElementById('friends-online-count').innerText = online.length;
+
+        const makeRow = (f) => {
+            const dotCls = { online:'dot-online', 'in-game':'dot-online', away:'dot-away' }[f.status_now] || 'dot-offline';
+            const statusTxt = f.status_now === 'in-game' ? `● ${f.game || 'In Game'}` :
+                              f.status_now === 'online'  ? '● Online' :
+                              f.status_now === 'away'    ? '◐ Away'   : '● Offline';
+            const opacity = f.status_now === 'offline' || !f.status_now ? 'opacity:0.45;' : '';
+            return `
+            <div class="friend-row" style="${opacity}">
+                <div class="friend-av">
+                    <img src="${f.avatar||''}" style="width:100%;height:100%;border-radius:6px;object-fit:cover;"
+                         onerror="this.style.display='none';this.parentNode.innerText='👤'">
+                </div>
+                <div style="min-width:0;">
+                    <div class="friend-name-sm">${f.username}</div>
+                    <div class="friend-status-sm ${dotCls}">${statusTxt}</div>
+                </div>
+            </div>`;
+        };
+
+        let html = '';
+        if (online.length) {
+            html += `<div class="cat-label">ONLINE</div>` + online.map(makeRow).join('');
+        }
+        if (away.length) {
+            html += `<div class="cat-label" style="padding-top:6px;">AWAY</div>` + away.map(makeRow).join('');
+        }
+        if (offline.length) {
+            html += `<div class="cat-label" style="padding-top:6px;">OFFLINE</div>` + offline.map(makeRow).join('');
+        }
+        box.innerHTML = html;
+    }
+
+    /* ─────────────────────────────────────────────────────────────────
+       MANAGE VERSIONS MODAL (fix #5)
+       Reads from the same #version-list DOM that script.js builds,
+       so it always reflects real installed versions.
+    ───────────────────────────────────────────────────────────────── */
+    function openManageVersions() {
+        renderManageVersions();
+        renderManageModpacks();
+        document.getElementById('manage-versions-modal').classList.remove('hidden');
+    }
+    function closeManageVersions() {
+        document.getElementById('manage-versions-modal').classList.add('hidden');
+    }
+
+    function renderManageVersions() {
+        const slots = document.querySelectorAll('#version-list .version-slot');
+        const box   = document.getElementById('mv-versions-list');
+        if (!slots.length) {
+            box.innerHTML = `<p class="section-label" style="color:var(--text-ghost);letter-spacing:1px;padding:12px 0;">No versions installed</p>`;
+            return;
+        }
+        box.innerHTML = [...slots].map(s => {
+            const name = s.querySelector('p')?.innerText || s.innerText.trim();
+            const icon = s.querySelector('.version-slot-icon')?.innerText || '📦';
+            return `
+            <div class="mv-row">
+                <div class="mv-icon">${icon}</div>
+                <div style="min-width:0;">
+                    <div class="mv-name">${name}</div>
+                    <div class="mv-meta">Installed version</div>
+                </div>
+                <button class="mv-del" onclick="deleteVersionMV(this,'${name}')">DELETE</button>
+            </div>`;
+        }).join('');
+    }
+
+    function renderManageModpacks() {
+        const slots = document.querySelectorAll('#modpack-list .version-slot');
+        const box   = document.getElementById('mv-modpacks-list');
+        if (!slots.length) {
+            box.innerHTML = `<p class="section-label" style="color:var(--text-ghost);letter-spacing:1px;padding:12px 0;">No modpacks installed</p>`;
+            return;
+        }
+        box.innerHTML = [...slots].map(s => {
+            const name = s.querySelector('p')?.innerText || s.innerText.trim();
+            const icon = s.querySelector('.version-slot-icon')?.innerText || '🧩';
+            return `
+            <div class="mv-row">
+                <div class="mv-icon">${icon}</div>
+                <div style="min-width:0;">
+                    <div class="mv-name">${name}</div>
+                    <div class="mv-meta">Modpack</div>
+                </div>
+                <button class="mv-del" onclick="deleteVersionMV(this,'${name}')">DELETE</button>
+            </div>`;
+        }).join('');
+    }
+
+    function switchMVTab(tab) {
+        ['versions','modpacks'].forEach(t => {
+            document.getElementById('mvtab-'+t)?.classList.toggle('active', t===tab);
+            document.getElementById('mvtab-'+t+'-pane')?.classList.toggle('hidden', t!==tab);
+        });
+    }
+
+    async function deleteVersionMV(btn, name) {
+        if (!confirm('Delete ' + name + '? This cannot be undone.')) return;
+        btn.closest('.mv-row').remove();
+        // Remove the slot from the sidebar too so it stays in sync
+        document.querySelectorAll('#version-list .version-slot, #modpack-list .version-slot').forEach(s => {
+            if ((s.querySelector('p')?.innerText || '').trim() === name) s.remove();
+        });
+        const cnt = document.getElementById('version-count');
+        if (cnt) cnt.innerText = Math.max(0, parseInt(cnt.innerText||'0') - 1);
+        // Hook to backend if available
+        if (typeof eel !== 'undefined' && eel.delete_version) eel.delete_version(name)();
+    }
+
+    function addNewVersion() {
+        if (typeof eel !== 'undefined' && eel.open_version_installer) eel.open_version_installer()();
+        else alert('Version installer: hook eel.open_version_installer() in your Python backend.');
+    }
+
+    /* ─────────────────────────────────────────────────────────────────
+       MODPACK LIST — script.js calls loadVersions() which fills
+       #version-list. Your backend's get_versions() can return modpacks
+       too; they'll land in #version-list. If you have a separate
+       eel.get_modpacks() function, hook it here:
+    ───────────────────────────────────────────────────────────────── */
+    document.addEventListener('DOMContentLoaded', () => {
+        const _origLoad = window.loadVersions;
+        window.loadVersions = async function() {
+            if (_origLoad) await _origLoad.apply(this, arguments);
+            // If your backend exposes get_modpacks(), populate #modpack-list here:
+            if (typeof eel !== 'undefined' && eel.get_modpacks) {
+                try {
+                    const mods = await eel.get_modpacks()();
+                    populateModpacks(mods || []);
+                } catch(e) { /* get_modpacks not implemented yet */ }
+            }
+        };
+    });
+
+    function populateModpacks(modpacks) {
+        const list = document.getElementById('modpack-list');
+        if (!modpacks.length) {
+            list.innerHTML = `<div class="text-center py-6 section-label" style="letter-spacing:1px;color:var(--text-ghost);">No modpacks found</div>`;
+            return;
+        }
+        list.innerHTML = '';
+        modpacks.forEach(mod => {
+            const div = document.createElement('div');
+            div.className = 'version-slot';
+            div.innerHTML = `
+                <div class="version-slot-icon">🧩</div>
+                <div class="min-w-0 flex-1">
+                    <p style="font-family:Rajdhani,sans-serif;font-size:13px;font-weight:600;color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${mod}</p>
+                </div>`;
+            div.onclick = () => window.selectVersion(mod, div);
+            list.appendChild(div);
+        });
+    }
+    </script>
+
+    <script src="script.js"></script>
+</body>
+</html>
