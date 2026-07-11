@@ -1,3 +1,6 @@
+> [!IMPORTANT]
+> This Launcher Is a Prototype of an Upcoming Launcher
+
 # Solarwakes Launcher
 
 A custom Minecraft launcher built with Python and a web-based UI, featuring user accounts, a friends system, skin support, and offline game launching.
