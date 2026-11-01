@@ -1,5 +1,5 @@
 > [!IMPORTANT]
-> This Launcher Is a Prototype of an Upcoming Launcher
+> This Launcher Is a Prototype
 
 # Solarwakes Launcher
 
